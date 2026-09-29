@@ -1,5 +1,5 @@
 _addon.name = 'BanishgaPull'
-_addon.author = 'Gemini Notebook'
+_addon.author = 'Hikaru Oshino'
 _addon.version = '1.8'
 _addon.commands = {'bp', 'banishgapull'}
 
