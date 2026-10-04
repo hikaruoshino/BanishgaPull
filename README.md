@@ -1,2 +1,48 @@
-# BanishgaPull v2.0.1
-FFXI Windower 4 Addon for Banishga and Target Pulling
+# BanishgaPull v2.0.1 - FFXI タグ取り・最速ヘイト捕獲 Windower 4 アドオン
+
+Windower 4 公式開発規格 (`config`, `texts`, `resources`, `packets`) に完全対応した、ダイバーシティ・オーメン・範囲狩り用ヘイト捕獲・タグ横取りアドオンです。
+
+---
+
+## 🌟 主な特徴・機能
+
+- **指定釣り役 (Designated Puller) 最優先追跡**:
+  指定した釣り役メンバーが被弾・交戦中の敵を最優先で検知し、バニシュガ等で瞬時にヘイトを横取り・キャッチ。
+- **設定の完全永続化 (`data/settings.xml`)**:
+  指定釣り役名、使用魔法、索敵距離、HUD位置などが自動保存され、エリアチェンジや再読み込みでリセットされません。
+- **リアルタイム HUD オーバーレイ表示**:
+  指定釣り役、使用魔法、標的モンスター名、自分/釣り役からの距離を画面上にリアルタイム表示 (UTF-8 DirectWrite 描画で文字化けゼロ)。
+- **使用魔法の自由カスタマイズ**:
+  バニシュガ (`Banishga`) だけでなく、`Banishga II`、`Diaga` (ディアガ)、`Poisonga` (ポイゾガ)、`Dia` (ディア) など自由に切替可能。
+- **ドラッグ移動 ＆ 表示位置調整対応**:
+  HUD画面上のマウスドラッグまたは `//bp pos <x> <y>` コマンドで表示位置を自在に変更可能。
+
+---
+
+## 💻 コマンド一覧 (`//bp` または `//banishgapull`)
+
+| コマンド | 実行例 | 機能説明 |
+| :--- | :--- | :--- |
+| **`//bp`** または **`//bp pull`** | `//bp` | 最優先標的（釣り役被弾中 ➔ PT被弾中 ➔ 近隣敵）へ指定魔法を発動 |
+| **`//bp set <名前>`** | `//bp set Taro` | 指定釣り役を設定 (`reset` や `off` で解除) |
+| **`//bp spell <魔法名>`** | `//bp spell Diaga` | 使用魔法を変更 (`Banishga II`, `Diaga`, `Poisonga` 等) |
+| **`//bp dist <メートル>`** | `//bp dist 18` | 索敵最大距離を変更 (初期値: 20m) |
+| **`//bp pos <x> <y>`** | `//bp pos 500 400` | HUD表示位置を変更 (例: X:500, Y:400) |
+| **`//bp hud`** | `//bp hud` | 画面HUD表示の ON / OFF 切替 |
+| **`//bp status`** | `//bp status` | 現在の設定ステータスをチャット欄に表示 |
+
+---
+
+## 📦 導入手順
+
+1. ダウンロードした ZIP ファイルを解凍します。
+2. Windower 4 の `addons/BanishgaPull/` フォルダへ `BanishgaPull.lua` および `README.md` を配置します。
+3. ゲーム内で `//lua load BanishgaPull` を実行します。
+
+---
+
+## 🔧 トラブルシューティング (HUDが表示されない場合)
+
+- **`//bp hud`** を実行して `[BanishgaPull] HUD表示: ON` と表示されるか確認してください。
+- 画面外に隠れてしまった場合は **`//bp pos 500 400`** を実行して画面中央へ呼び戻してください。
+- ゲーム内で **`//lua reload BanishgaPull`** を実行して設定を再読み込みしてください。
