@@ -1,10 +1,11 @@
 _addon.name = 'BanishgaPull'
 _addon.author = 'hikaruoshino'
-_addon.version = '2.2'
+_addon.version = '2.3'
 _addon.commands = {'bp', 'banishgapull'}
 
 require('chat')
 local config = require('config')
+local res = require('resources')
 
 -- 設定 (data/settings.xml)
 --   spell        : 唱える魔法 (日本語クライアントでは日本語名。例: バニシュガ / ディアガ)
@@ -53,6 +54,18 @@ end
 local function is_claim_ok(mob, party_ids)
     local claim = tonumber(mob.claim_id) or 0
     return claim == 0 or party_ids[claim] ~= nil
+end
+
+-- 唱える魔法の ID を名前から探す (日本語名・英語名どちらでも)。見つからなければ nil
+local function find_spell_id(name)
+    if not name or name == '' then return nil end
+    local lower = name:lower()
+    for id, row in pairs(res.spells) do
+        if type(row) == 'table' and (row.ja == name or (row.en and row.en:lower() == lower)) then
+            return id
+        end
+    end
+    return nil
 end
 
 windower.register_event('addon command', function(cmd, ...)
@@ -116,6 +129,16 @@ windower.register_event('addon command', function(cmd, ...)
     end
 
     -- 2. 即時捕獲処理
+    -- 魔法がリキャスト中なら、唱えずに残り時間を知らせる (ゲームの値が取れて、魔法名が分かるときだけ)
+    local spell_id = find_spell_id(settings.spell)
+    if spell_id then
+        local frames = (windower.ffxi.get_spell_recasts() or {})[spell_id]
+        if frames and frames > 0 then
+            windower.add_to_chat(123, sjis(string.format('[BanishgaPull] [%s] はリキャスト中です (あと %.1f 秒)。', settings.spell, frames / 60)))
+            return
+        end
+    end
+
     local designated_puller = get_puller()
     local party = windower.ffxi.get_party() or {}
     local mob_array = windower.ffxi.get_mob_array() or {}
@@ -140,8 +163,19 @@ windower.register_event('addon command', function(cmd, ...)
     local min_dist_sq = max_dist_sq
     local min_puller_dist_sq = 999999.0  -- 釣り役からの距離の2乗
     local target_priority = 0
+    local skipped_hidden = 0   -- 射程内にいるが、描画されていない (ターゲットできない) 敵
+    local skipped_claim = 0    -- 射程内にいるが、他 PT にクレームされている敵
 
     for index, mob in pairs(mob_array) do
+        -- 外した敵の数を数える (表示用)
+        if mob.is_npc and is_enemy(mob) and (mob.hpp or 0) > 0 and mob.status ~= 2 and mob.status ~= 3
+            and (mob.distance or math.huge) <= max_dist_sq then
+            if not mob.valid_target then
+                skipped_hidden = skipped_hidden + 1
+            elseif not is_claim_ok(mob, party_ids) then
+                skipped_claim = skipped_claim + 1
+            end
+        end
         -- 生きていてターゲット可能な敵 (フェイス・ペット・NPC・他PTクレームは除外)
         if mob.is_npc and mob.valid_target and is_enemy(mob) and is_claim_ok(mob, party_ids)
             and (mob.hpp or 0) > 0 and mob.status ~= 2 and mob.status ~= 3 then
@@ -203,6 +237,11 @@ windower.register_event('addon command', function(cmd, ...)
         end
     end
 
+    local skipped_msg = nil
+    if skipped_hidden > 0 or skipped_claim > 0 then
+        skipped_msg = sjis(string.format('[BanishgaPull] 対象外: 描画されていない敵 %d 体 / 他PTのクレーム %d 体', skipped_hidden, skipped_claim))
+    end
+
     if best_target then
         local real_min_dist = math.sqrt(min_dist_sq)
         local p_msg = ''
@@ -230,7 +269,9 @@ windower.register_event('addon command', function(cmd, ...)
         windower.add_to_chat(color, sjis('[BanishgaPull] ') .. p_msg .. ' >> ' .. best_target.name .. ' (' .. string.format('%.1f', real_min_dist) .. 'm) ' .. sjis('へ [' .. spell .. '] 発動！'))
         -- ターゲットを切り替えずに、敵の ID を直接指定して唱える (切り替え待ちで別の敵に飛ぶのを防ぐ)
         windower.send_command(sjis('input /ma "' .. spell .. '" ' .. best_target.id))
+        if skipped_msg then windower.add_to_chat(207, skipped_msg) end
     else
         windower.add_to_chat(123, sjis(string.format('[BanishgaPull Error] 射程%sm以内に有効な敵が見つかりません。', tostring(max_dist))))
+        if skipped_msg then windower.add_to_chat(207, skipped_msg) end
     end
 end)
