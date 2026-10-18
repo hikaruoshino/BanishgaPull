@@ -1,6 +1,6 @@
 _addon.name = 'BanishgaPull'
 _addon.author = 'hikaruoshino'
-_addon.version = '2.3'
+_addon.version = '2.4'
 _addon.commands = {'bp', 'banishgapull'}
 
 require('chat')
@@ -54,6 +54,24 @@ end
 local function is_claim_ok(mob, party_ids)
     local claim = tonumber(mob.claim_id) or 0
     return claim == 0 or party_ids[claim] ~= nil
+end
+
+-- ゲームが受け付けなかった敵 (「選択されたコマンドを実行できない」) は、しばらく選ばない。
+-- 同じ敵が選ばれ続けて、マクロを何度押しても唱えられなくなるのを防ぐ
+local REJECT_MESSAGE = '選択されたコマンドを実行できない'
+local REJECT_WINDOW_SEC = 3     -- 唱えると送ってから、この秒数以内に届いたこのメッセージを、その敵のものとみなす
+local BAD_TARGET_SEC = 15       -- 受け付けなかった敵を選ばない秒数
+local last_cast_id, last_cast_at = nil, 0
+local bad_targets = {}          -- [敵の ID] = 選ばない期限 (os.clock)
+
+local function is_bad_target(id)
+    local until_time = bad_targets[id]
+    if not until_time then return false end
+    if os.clock() > until_time then
+        bad_targets[id] = nil
+        return false
+    end
+    return true
 end
 
 -- 唱える魔法の ID を名前から探す (日本語名・英語名どちらでも)。見つからなければ nil
@@ -165,6 +183,7 @@ windower.register_event('addon command', function(cmd, ...)
     local target_priority = 0
     local skipped_hidden = 0   -- 射程内にいるが、描画されていない (ターゲットできない) 敵
     local skipped_claim = 0    -- 射程内にいるが、他 PT にクレームされている敵
+    local skipped_bad = 0      -- 射程内にいるが、ゲームが受け付けなかった敵 (しばらく選ばない)
 
     for index, mob in pairs(mob_array) do
         -- 外した敵の数を数える (表示用)
@@ -174,10 +193,12 @@ windower.register_event('addon command', function(cmd, ...)
                 skipped_hidden = skipped_hidden + 1
             elseif not is_claim_ok(mob, party_ids) then
                 skipped_claim = skipped_claim + 1
+            elseif is_bad_target(mob.id) then
+                skipped_bad = skipped_bad + 1
             end
         end
         -- 生きていてターゲット可能な敵 (フェイス・ペット・NPC・他PTクレームは除外)
-        if mob.is_npc and mob.valid_target and is_enemy(mob) and is_claim_ok(mob, party_ids)
+        if mob.is_npc and mob.valid_target and is_enemy(mob) and is_claim_ok(mob, party_ids) and not is_bad_target(mob.id)
             and (mob.hpp or 0) > 0 and mob.status ~= 2 and mob.status ~= 3 then
             local dist_self_sq = mob.distance
             -- 自分からの距離が射程以内
@@ -238,8 +259,11 @@ windower.register_event('addon command', function(cmd, ...)
     end
 
     local skipped_msg = nil
-    if skipped_hidden > 0 or skipped_claim > 0 then
+    if skipped_hidden > 0 or skipped_claim > 0 or skipped_bad > 0 then
         skipped_msg = sjis(string.format('[BanishgaPull] 対象外: 描画されていない敵 %d 体 / 他PTのクレーム %d 体', skipped_hidden, skipped_claim))
+        if skipped_bad > 0 then
+            skipped_msg = skipped_msg .. sjis(string.format(' / 受け付けられなかった敵 %d 体', skipped_bad))
+        end
     end
 
     if best_target then
@@ -269,9 +293,20 @@ windower.register_event('addon command', function(cmd, ...)
         windower.add_to_chat(color, sjis('[BanishgaPull] ') .. p_msg .. ' >> ' .. best_target.name .. ' (' .. string.format('%.1f', real_min_dist) .. 'm) ' .. sjis('へ [' .. spell .. '] 発動！'))
         -- ターゲットを切り替えずに、敵の ID を直接指定して唱える (切り替え待ちで別の敵に飛ぶのを防ぐ)
         windower.send_command(sjis('input /ma "' .. spell .. '" ' .. best_target.id))
+        last_cast_id, last_cast_at = best_target.id, os.clock()
         if skipped_msg then windower.add_to_chat(207, skipped_msg) end
     else
         windower.add_to_chat(123, sjis(string.format('[BanishgaPull Error] 射程%sm以内に有効な敵が見つかりません。', tostring(max_dist))))
         if skipped_msg then windower.add_to_chat(207, skipped_msg) end
     end
 end)
+
+-- 唱えると送った直後に「選択されたコマンドを実行できない」が届いたら、その敵は受け付けられなかったので、しばらく選ばない
+windower.register_event('incoming text', function(original)
+    if not last_cast_id or os.clock() - last_cast_at > REJECT_WINDOW_SEC then return end
+    if not original or not original:find(sjis(REJECT_MESSAGE), 1, true) then return end
+    bad_targets[last_cast_id] = os.clock() + BAD_TARGET_SEC
+    last_cast_id = nil
+    windower.add_to_chat(123, sjis(string.format('[BanishgaPull] その敵には唱えられなかったので、%d 秒間は選びません。もう一度押すと別の敵を選びます。', BAD_TARGET_SEC)))
+end)
+
