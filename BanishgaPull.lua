@@ -1,6 +1,6 @@
 _addon.name = 'BanishgaPull'
 _addon.author = 'hikaruoshino'
-_addon.version = '2.4'
+_addon.version = '2.5'
 _addon.commands = {'bp', 'banishgapull'}
 
 require('chat')
@@ -15,13 +15,25 @@ local defaults = {
     spell = 'バニシュガ',
     max_distance = 20,
     puller = '',
+    lang = 'auto',          -- 表示の言語: auto (クライアントの言語に合わせる) / ja / en
+    reject_message = '',    -- 「唱えられなかった」と判断するチャットの文 (空なら言語ごとの既定)
 }
 local settings = config.load(defaults)
 
--- 旧版の英語名は日本語クライアントでは通らないため置き換える
-if settings.spell == 'Banishga' then
-    settings.spell = 'バニシュガ'
-    config.save(settings)
+-- 表示の言語。auto のときはゲームクライアントの言語 (windower.ffxi.get_info().language) に合わせる
+local function resolve_lang()
+    local s = tostring(settings.lang or 'auto'):lower()
+    if s == 'ja' or s == 'en' then return s end
+    local ok, info = pcall(windower.ffxi.get_info)
+    local l = ok and info and info.language and tostring(info.language):lower() or 'japanese'
+    return (l == 'japanese') and 'ja' or 'en'
+end
+local LANG = resolve_lang()
+
+-- 日本語と英語の文を対で書く。言語に合わせたほうを返す
+local function L(ja, en)
+    if LANG == 'ja' then return ja end
+    return en
 end
 
 local PULLER_NEAR_SQ = 225.0 -- 釣り役から 15m 以内 (2乗)
@@ -35,12 +47,14 @@ end
 -- UTF-8からShift-JISへの変換ヘルパー
 local function sjis(str)
     if not str then return '' end
+    if LANG ~= 'ja' then return str end
     return windower.to_shift_jis and windower.to_shift_jis(str) or str
 end
 
 -- チャットから届く引数 (Shift-JIS) を UTF-8 に戻す
 local function from_sjis(str)
     if not str then return nil end
+    if LANG ~= 'ja' then return str end
     return windower.from_shift_jis and windower.from_shift_jis(str) or str
 end
 
@@ -58,7 +72,9 @@ end
 
 -- ゲームが受け付けなかった敵 (「選択されたコマンドを実行できない」) は、しばらく選ばない。
 -- 同じ敵が選ばれ続けて、マクロを何度押しても唱えられなくなるのを防ぐ
-local REJECT_MESSAGE = '選択されたコマンドを実行できない'
+-- 英語クライアントの文は 'Unable to execute that command' (ユーザーの記憶による。ゲーム内未確認)。届かないときは settings.xml の reject_message に実際の文を書く
+local REJECT_MESSAGE = (settings.reject_message and settings.reject_message ~= '') and settings.reject_message
+    or L('選択されたコマンドを実行できない', 'Unable to execute that command')
 local REJECT_WINDOW_SEC = 3     -- 唱えると送ってから、この秒数以内に届いたこのメッセージを、その敵のものとみなす
 local BAD_TARGET_SEC = 15       -- 受け付けなかった敵を選ばない秒数
 local last_cast_id, last_cast_at = nil, 0
@@ -86,6 +102,17 @@ local function find_spell_id(name)
     return nil
 end
 
+-- 保存されている魔法名を、今の言語の名前に直す (旧版の英語名 'Banishga' を日本語クライアントで日本語名にする、英語クライアントで日本語名を英語名にする)
+do
+    local id = find_spell_id(settings.spell)
+    local row = id and res.spells[id]
+    local name = row and ((LANG == 'ja') and (row.ja or row.en) or (row.en or row.ja))
+    if name and name ~= settings.spell then
+        settings.spell = name
+        config.save(settings)
+    end
+end
+
 windower.register_event('addon command', function(cmd, ...)
     local args = {...}
     cmd = cmd and cmd:lower() or 'pull'
@@ -97,15 +124,15 @@ windower.register_event('addon command', function(cmd, ...)
             settings.puller = ''
             config.save(settings)
             windower.add_to_chat(158, '--------------------------------------------------')
-            windower.add_to_chat(158, sjis('  [BanishgaPull] 釣り役指定を【解除】しました。'))
-            windower.add_to_chat(158, sjis('  ※パーティメンバー全員を対象に自動検知します。'))
+            windower.add_to_chat(158, sjis(L('  [BanishgaPull] 釣り役指定を【解除】しました。', '  [BanishgaPull] Puller cleared.')))
+            windower.add_to_chat(158, sjis(L('  ※パーティメンバー全員を対象に自動検知します。', '  Mobs attacking any party member are now picked.')))
             windower.add_to_chat(158, '--------------------------------------------------')
         else
             settings.puller = name
             config.save(settings)
             windower.add_to_chat(209, '==================================================')
-            windower.add_to_chat(209, sjis('  [BanishgaPull] 釣り役設定: 【 ') .. name .. sjis(' 】 さん'))
-            windower.add_to_chat(209, sjis('  ※ ') .. name .. sjis(' さんの周囲の敵（黄色ネーム含む）を最優先で捕獲します！'))
+            windower.add_to_chat(209, sjis(L('  [BanishgaPull] 釣り役設定: 【 ', '  [BanishgaPull] Puller set: ')) .. name .. sjis(L(' 】 さん', '')))
+            windower.add_to_chat(209, sjis(L('  ※ ', '  Mobs attacking or near ')) .. name .. sjis(L(' さんの周囲の敵（黄色ネーム含む）を最優先で捕獲します！', ' (including unclaimed ones) are picked first.')))
             windower.add_to_chat(209, '==================================================')
         end
         return
@@ -113,36 +140,47 @@ windower.register_event('addon command', function(cmd, ...)
         -- //bp spell ディアガ : 唱える魔法を変更
         local name = from_sjis(table.concat(args, ' '))
         if not name or name == '' then
-            windower.add_to_chat(207, sjis('[BanishgaPull] 現在の魔法: ' .. settings.spell .. ' (変更: //bp spell 魔法名)'))
+            windower.add_to_chat(207, sjis(L('[BanishgaPull] 現在の魔法: ' .. settings.spell .. ' (変更: //bp spell 魔法名)', '[BanishgaPull] Current spell: ' .. settings.spell .. ' (change: //bp spell <name>)')))
             return
         end
         settings.spell = name
         config.save(settings)
-        windower.add_to_chat(209, sjis('[BanishgaPull] 唱える魔法を【 ' .. name .. ' 】に変更しました。'))
+        windower.add_to_chat(209, sjis(L('[BanishgaPull] 唱える魔法を【 ' .. name .. ' 】に変更しました。', '[BanishgaPull] Spell set to [' .. name .. '].')))
         return
     elseif cmd == 'range' or cmd == 'distance' then
         -- //bp range 20 : 自分からの射程 (m) を変更
         local dist = tonumber(args[1])
         if not dist or dist <= 0 or dist > 50 then
-            windower.add_to_chat(207, sjis(string.format('[BanishgaPull] 現在の射程: %sm (変更: //bp range 数値)', tostring(settings.max_distance))))
+            windower.add_to_chat(207, sjis(string.format(L('[BanishgaPull] 現在の射程: %sm (変更: //bp range 数値)', '[BanishgaPull] Current range: %sm (change: //bp range <yalms>)'), tostring(settings.max_distance))))
             return
         end
         settings.max_distance = dist
         config.save(settings)
-        windower.add_to_chat(209, sjis(string.format('[BanishgaPull] 射程を %.1fm に変更しました。', dist)))
+        windower.add_to_chat(209, sjis(string.format(L('[BanishgaPull] 射程を %.1fm に変更しました。', '[BanishgaPull] Range set to %.1f.'), dist)))
         return
     elseif cmd == 'status' or cmd == 'show' then
         local puller = get_puller()
-        local status_str = puller and (sjis('【 ') .. puller .. sjis(' 】 さん')) or sjis('未指定（全員自動検知）')
-        windower.add_to_chat(207, sjis('[BanishgaPull] 現在の釣り役: ') .. status_str)
-        windower.add_to_chat(207, sjis(string.format('[BanishgaPull] 魔法: %s / 射程: %sm', settings.spell, tostring(settings.max_distance))))
+        local status_str = puller and (sjis(L('【 ', '')) .. puller .. sjis(L(' 】 さん', ''))) or sjis(L('未指定（全員自動検知）', 'none (any party member)'))
+        windower.add_to_chat(207, sjis(L('[BanishgaPull] 現在の釣り役: ', '[BanishgaPull] Puller: ')) .. status_str)
+        windower.add_to_chat(207, sjis(string.format(L('[BanishgaPull] 魔法: %s / 射程: %sm', '[BanishgaPull] Spell: %s / range: %s'), settings.spell, tostring(settings.max_distance))))
+        return
+    elseif cmd == 'lang' then
+        local v = args[1] and args[1]:lower()
+        if v == 'auto' or v == 'ja' or v == 'en' then
+            settings.lang = v
+            config.save(settings)
+            windower.add_to_chat(207, '[BanishgaPull] Language: ' .. v .. ' (reload with //lua r BanishgaPull to apply)')
+        else
+            windower.add_to_chat(207, '[BanishgaPull] Language: ' .. tostring(settings.lang) .. ' (now ' .. LANG .. '). Use //bp lang auto|ja|en')
+        end
         return
     elseif cmd == 'help' then
-        windower.add_to_chat(207, sjis('[BanishgaPull] //bp              : 釣り役周辺の敵へ魔法を発動'))
-        windower.add_to_chat(207, sjis('[BanishgaPull] //bp set 名前     : 釣り役を指定 (//bp set off で解除)'))
-        windower.add_to_chat(207, sjis('[BanishgaPull] //bp spell 魔法名 : 唱える魔法を変更 (例: ディアガ)'))
-        windower.add_to_chat(207, sjis('[BanishgaPull] //bp range 数値   : 自分からの射程 (m) を変更'))
-        windower.add_to_chat(207, sjis('[BanishgaPull] //bp status       : 現在の設定を表示'))
+        windower.add_to_chat(207, sjis(L('[BanishgaPull] //bp              : 釣り役周辺の敵へ魔法を発動', '[BanishgaPull] //bp              : pick one mob and cast the spell on it')))
+        windower.add_to_chat(207, sjis(L('[BanishgaPull] //bp set 名前     : 釣り役を指定 (//bp set off で解除)', '[BanishgaPull] //bp set <name>  : set the puller (//bp set off to clear)')))
+        windower.add_to_chat(207, sjis(L('[BanishgaPull] //bp spell 魔法名 : 唱える魔法を変更 (例: ディアガ)', '[BanishgaPull] //bp spell <name>: change the spell (e.g. Diaga)')))
+        windower.add_to_chat(207, sjis(L('[BanishgaPull] //bp range 数値   : 自分からの射程 (m) を変更', '[BanishgaPull] //bp range <n>   : change the range from you (yalms)')))
+        windower.add_to_chat(207, sjis(L('[BanishgaPull] //bp status       : 現在の設定を表示', '[BanishgaPull] //bp status       : show the current settings')))
+        windower.add_to_chat(207, sjis('[BanishgaPull] //bp lang auto|ja|en : ' .. L('表示の言語', 'display language')))
         return
     end
 
@@ -152,7 +190,7 @@ windower.register_event('addon command', function(cmd, ...)
     if spell_id then
         local frames = (windower.ffxi.get_spell_recasts() or {})[spell_id]
         if frames and frames > 0 then
-            windower.add_to_chat(123, sjis(string.format('[BanishgaPull] [%s] はリキャスト中です (あと %.1f 秒)。', settings.spell, frames / 60)))
+            windower.add_to_chat(123, sjis(string.format(L('[BanishgaPull] [%s] はリキャスト中です (あと %.1f 秒)。', '[BanishgaPull] [%s] is on recast (%.1f s left).'), settings.spell, frames / 60)))
             return
         end
     end
@@ -260,9 +298,9 @@ windower.register_event('addon command', function(cmd, ...)
 
     local skipped_msg = nil
     if skipped_hidden > 0 or skipped_claim > 0 or skipped_bad > 0 then
-        skipped_msg = sjis(string.format('[BanishgaPull] 対象外: 描画されていない敵 %d 体 / 他PTのクレーム %d 体', skipped_hidden, skipped_claim))
+        skipped_msg = sjis(string.format(L('[BanishgaPull] 対象外: 描画されていない敵 %d 体 / 他PTのクレーム %d 体', '[BanishgaPull] Skipped: %d not drawn / %d claimed by another party'), skipped_hidden, skipped_claim))
         if skipped_bad > 0 then
-            skipped_msg = skipped_msg .. sjis(string.format(' / 受け付けられなかった敵 %d 体', skipped_bad))
+            skipped_msg = skipped_msg .. sjis(string.format(L(' / 受け付けられなかった敵 %d 体', ' / %d refused by the game'), skipped_bad))
         end
     end
 
@@ -273,30 +311,30 @@ windower.register_event('addon command', function(cmd, ...)
 
         if target_priority == 4 then
             local real_puller_dist = (min_puller_dist_sq < 990000.0) and math.sqrt(min_puller_dist_sq) or nil
-            local p_dist_str = real_puller_dist and string.format(' [釣り役から%.1fm]', real_puller_dist) or ''
-            p_msg = sjis('【★指定釣り役 (' .. (designated_puller or '') .. ') 被弾中' .. p_dist_str .. '】')
+            local p_dist_str = real_puller_dist and string.format(L(' [釣り役から%.1fm]', ' [%.1f from puller]'), real_puller_dist) or ''
+            p_msg = sjis(L('【★指定釣り役 (' .. (designated_puller or '') .. ') 被弾中' .. p_dist_str .. '】', '[Puller (' .. (designated_puller or '') .. ') is being attacked' .. p_dist_str .. ']'))
             color = 209
         elseif target_priority == 3 then
             local real_puller_dist = (min_puller_dist_sq < 990000.0) and math.sqrt(min_puller_dist_sq) or nil
-            local p_dist_str = real_puller_dist and string.format(' [釣り役から%.1fm]', real_puller_dist) or ''
-            p_msg = sjis('【★指定釣り役 (' .. (designated_puller or '') .. ') 追従・黄色ネーム' .. p_dist_str .. '】')
+            local p_dist_str = real_puller_dist and string.format(L(' [釣り役から%.1fm]', ' [%.1f from puller]'), real_puller_dist) or ''
+            p_msg = sjis(L('【★指定釣り役 (' .. (designated_puller or '') .. ') 追従・黄色ネーム' .. p_dist_str .. '】', '[Near puller (' .. (designated_puller or '') .. ')' .. p_dist_str .. ']'))
             color = 209
         elseif target_priority == 2 then
-            p_msg = sjis('【PTメンバー被弾中】')
+            p_msg = sjis(L('【PTメンバー被弾中】', '[Party member is being attacked]'))
             color = 207
         else
-            p_msg = sjis('【近隣敵】')
+            p_msg = sjis(L('【近隣敵】', '[Nearby mob]'))
             color = 200
         end
 
         local spell = settings.spell
-        windower.add_to_chat(color, sjis('[BanishgaPull] ') .. p_msg .. ' >> ' .. best_target.name .. ' (' .. string.format('%.1f', real_min_dist) .. 'm) ' .. sjis('へ [' .. spell .. '] 発動！'))
+        windower.add_to_chat(color, sjis('[BanishgaPull] ') .. p_msg .. ' >> ' .. best_target.name .. ' (' .. string.format('%.1f', real_min_dist) .. 'm) ' .. sjis(L('へ [' .. spell .. '] 発動！', '-> [' .. spell .. ']')))
         -- ターゲットを切り替えずに、敵の ID を直接指定して唱える (切り替え待ちで別の敵に飛ぶのを防ぐ)
         windower.send_command(sjis('input /ma "' .. spell .. '" ' .. best_target.id))
         last_cast_id, last_cast_at = best_target.id, os.clock()
         if skipped_msg then windower.add_to_chat(207, skipped_msg) end
     else
-        windower.add_to_chat(123, sjis(string.format('[BanishgaPull Error] 射程%sm以内に有効な敵が見つかりません。', tostring(max_dist))))
+        windower.add_to_chat(123, sjis(string.format(L('[BanishgaPull Error] 射程%sm以内に有効な敵が見つかりません。', '[BanishgaPull Error] No valid mob within %s yalms.'), tostring(max_dist))))
         if skipped_msg then windower.add_to_chat(207, skipped_msg) end
     end
 end)
@@ -307,6 +345,6 @@ windower.register_event('incoming text', function(original)
     if not original or not original:find(sjis(REJECT_MESSAGE), 1, true) then return end
     bad_targets[last_cast_id] = os.clock() + BAD_TARGET_SEC
     last_cast_id = nil
-    windower.add_to_chat(123, sjis(string.format('[BanishgaPull] その敵には唱えられなかったので、%d 秒間は選びません。もう一度押すと別の敵を選びます。', BAD_TARGET_SEC)))
+    windower.add_to_chat(123, sjis(string.format(L('[BanishgaPull] その敵には唱えられなかったので、%d 秒間は選びません。もう一度押すと別の敵を選びます。', '[BanishgaPull] The game refused that mob, so it is skipped for %d s. Press again to pick another.'), BAD_TARGET_SEC)))
 end)
 

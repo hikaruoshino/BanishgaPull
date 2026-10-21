@@ -1,4 +1,6 @@
-# BanishgaPull (v2.4.0)
+# BanishgaPull (v2.5.0)
+
+English follows the Japanese section. → [English](#english)
 
 **ファイナルファンタジーXI（Windower 4用） タゲ横取り＆釣り補助アドオン**
 
@@ -72,6 +74,7 @@ BanishgaPull/
 | `//bp range <メートル>` | 自分からの射程を変更（0〜50m、初期値 20m。`distance` も可） | `//bp range 18` |
 | `//bp status` | 現在の釣り役・魔法・射程をチャット欄に表示 | `//bp status` |
 | `//bp help` | コマンド一覧をチャット欄に表示 | `//bp help` |
+| `//bp lang auto` / `ja` / `en` | 表示の言語（初期値 auto = クライアントの言語。読み込み直しで反映） | `//bp lang en` |
 
 ### マクロ例
 
@@ -109,7 +112,7 @@ BanishgaPull/
 ## 📜 ライセンス・クレジット
 
 * **作者**: hikaruoshino
-* **動作環境**: Windower 4 (日本語クライアント対応)
+* **動作環境**: Windower 4 (日本語クライアントで確認。英語クライアントは英語表示に対応していますが、未確認です)
 * **使用ライブラリ**: `config`, `chat`（どちらも Windower 標準）
 * **ライセンス**: MIT License
 
@@ -117,6 +120,8 @@ BanishgaPull/
 
 ## 📜 更新履歴（Changelog）
 
+* **v2.5.0 (2026-10-22)**
+  * **英語表示に対応**: ゲームクライアントの言語に合わせて自動で切り替わる（`//bp lang auto|ja|en`、読み込み直しで反映）。魔法名は言語に合わせて自動で直る（英語クライアントでは `Banishga`）。英語クライアントでの動作と、受け付けられなかった敵の検出（英語の文 `Unable to execute that command` はゲーム内未確認）は未確認。`reject_message`（`data/settings.xml`）で検出する文を変えられる。
 * **v2.4.0 (2026-10-18)**
   * **受け付けられなかった敵を 15 秒選ばない**: 唱えた直後に「選択されたコマンドを実行できない」が届いた敵を外し、同じ敵が選ばれ続けて唱えられなくなるのを解消。外した数は「対象外」の表示に「受け付けられなかった敵 N 体」として出ます。
 * **v2.3.0 (2026-10-16)**
@@ -138,3 +143,58 @@ BanishgaPull/
   * 詠唱魔法のカスタム変更コマンド (`//bp spell`) と、最大検索範囲の変更コマンド (`//bp dist`) を追加。
 * **v1.0.0 (2026-09-20)**
   * 初版リリース。指定釣り役追尾および3段階ターゲット優先度検索を搭載。
+
+---
+
+<a id="english"></a>
+
+## English
+
+BanishgaPull is a Windower 4 addon for FINAL FANTASY XI, for fights with many mobs around (Divergence, Omen, Odyssey, mob packs). Put `/con bp` in a macro. **Each press picks one mob and casts one spell on it** (Banishga by default). It has no loop or timer, so nothing happens until you press.
+
+**Not tested on the English client yet.** The display and the spell name switch to English when the client is English (`//bp lang ja|en|auto` to force it), but I have only played it on the Japanese client. Whether it detects a refused cast on the English client is not checked either (see below).
+
+### How it picks a mob
+
+Within your range (default 20 yalms), in this order:
+
+1. A mob attacking the puller you set with `//bp set <name>`
+2. A mob within 15 yalms of that puller
+3. A mob attacking another party member
+4. Any other mob in range
+
+Orders 1 and 2 only apply if you set a puller. Among orders 1 and 2 it takes the mob closest to the puller; otherwise the one closest to you.
+
+Skipped: trusts, pets, NPCs, mobs claimed by another party (purple name), dead mobs, and mobs that are not drawn on your screen. The cast goes out with the mob's ID (`/ma "Banishga" <id>`), so it cannot jump to another mob while your target changes.
+
+### Other behavior
+
+- If the spell is on recast, it prints the seconds left and does not cast.
+- It prints how many mobs in range it had to skip (not drawn, claimed by another party, refused by the game).
+- If the game refuses a mob right after the cast is sent, that mob is skipped for 15 seconds so the next press goes to another one. On the Japanese client it looks for 選択されたコマンドを実行できない. On the English client it looks for "Unable to execute that command" (from memory, **not checked on an English client yet**). If it never triggers, tell me the exact message, or set it yourself in `reject_message` in `data/settings.xml`.
+
+### Install
+
+1. Put the folder at `Windower4/addons/BanishgaPull/BanishgaPull.lua`.
+2. In game: `//lua load BanishgaPull`. If you are updating from an older version, use `//lua reload BanishgaPull`.
+
+### Commands (`//bp` or `//banishgapull`)
+
+| Command | What it does |
+| :--- | :--- |
+| `//bp` or `//bp pull` | Pick one mob and cast the spell once |
+| `//bp set <name>` | Set the puller (saved). `//bp set off` clears it (`reset` and `clear` also work) |
+| `//bp spell <name>` | Change the spell (e.g. `//bp spell Diaga`) |
+| `//bp range <yalms>` | Change the range from you (up to 50, default 20) |
+| `//bp status` | Show the puller, spell and range |
+| `//bp lang auto` / `ja` / `en` | Display language (reload to apply) |
+| `//bp help` | List the commands |
+
+Macro example: `/con bp`
+
+### Notes
+
+- Settings (puller, spell, range, language) are saved in `data/settings.xml`.
+- Use of external tools is at your own risk.
+
+Released under the MIT License. Author: hikaruoshino.
