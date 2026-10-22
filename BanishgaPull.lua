@@ -1,6 +1,6 @@
 _addon.name = 'BanishgaPull'
 _addon.author = 'hikaruoshino'
-_addon.version = '2.5'
+_addon.version = '2.5.1'
 _addon.commands = {'bp', 'banishgapull'}
 
 require('chat')
@@ -181,6 +181,10 @@ windower.register_event('addon command', function(cmd, ...)
         windower.add_to_chat(207, sjis(L('[BanishgaPull] //bp range 数値   : 自分からの射程 (m) を変更', '[BanishgaPull] //bp range <n>   : change the range from you (yalms)')))
         windower.add_to_chat(207, sjis(L('[BanishgaPull] //bp status       : 現在の設定を表示', '[BanishgaPull] //bp status       : show the current settings')))
         windower.add_to_chat(207, sjis('[BanishgaPull] //bp lang auto|ja|en : ' .. L('表示の言語', 'display language')))
+        return
+    elseif cmd ~= 'pull' then
+        -- 表にないコマンド (旧説明の //bp dist や綴り間違いなど) で、詠唱が実行されないようにする
+        windower.add_to_chat(123, sjis(L('[BanishgaPull] 不明なコマンドです: ' .. cmd .. ' (一覧: //bp help)', '[BanishgaPull] Unknown command: ' .. cmd .. ' (list: //bp help)')))
         return
     end
 
