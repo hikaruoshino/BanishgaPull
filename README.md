@@ -2,17 +2,17 @@
 
 English follows the Japanese section. → [English](#english)
 
-**ファイナルファンタジーXI（Windower 4用） タゲ横取り＆釣り補助アドオン**
+**FFXI (Windower 4) 用 釣り補助アドオン**
 
 **マクロで `//bp` を押したときだけ、1 回だけ動きます。** そのとき敵を 1 体選び、魔法を 1 回送るだけです。自動で繰り返したり、連続で詠唱したりはしません（タイマーもループもありません）。押すたびに 1 回です。
 
-`BanishgaPull` は、FFXI Windower 4 向けの高速ターゲット補獲・詠唱補助アドオンです。ダイバージェンス、オメン、オデシー（シェオル）、各種範囲狩りや多重リンクなどの集団戦において、指定した「釣り役」の周囲に集まった敵や、PTメンバーを攻撃している敵を優先順に探し、`バニシュガ` や `ディアガ` などの魔法を 1 回詠唱します。
+`BanishgaPull` は、Windower 4 用のアドオンです。ダイバージェンス、オメン、オデシー（シェオル）、各種範囲狩りや多重リンクなどの集団戦において、指定した「釣り役」の周囲に集まった敵や、PTメンバーを攻撃している敵を優先順に探し、`バニシュガ` や `ディアガ` などの魔法を 1 回詠唱します。
 
-v2.2.0 では、**フェイス・ペット・他PTの敵を誤って選ぶ問題の修正**、**敵IDを直接指定する確実な詠唱方式への変更**、**魔法・射程・釣り役設定の保存**を実施しました。
+最新の v2.5.0 では、英語表示に対応しました。以前の版の変更は、末尾の更新履歴にあります。
 
 ---
 
-## 🌟 主な機能
+## 主な機能
 
 * **4段階の自動ターゲット優先度判定（黄色ネーム対応）**
   * **Priority 4（最高）**: 指定釣り役を直接ターゲット・攻撃している敵
@@ -23,10 +23,10 @@ v2.2.0 では、**フェイス・ペット・他PTの敵を誤って選ぶ問題
   * 敵（モンスター）以外の **フェイス・ペット・羅盤・NPC は対象外**。
   * **他PTがクレームした敵（紫ネーム）は対象外**。未クレーム（黄色ネーム）と自PT・アライアンスのクレーム（赤ネーム）だけを狙います。
 * **指定釣り役（Puller）追尾＆距離ソート**
-  * `//bp set <キャラ名>` で指定した釣り役の足元・周辺にいる敵を「釣り役からの距離」で最優先ソートし、大量の敵群から最も近い個体を捉えます。
+  * `//bp set <キャラ名>` で指定した釣り役からの距離が近い敵を、優先して選びます。
 * **敵ID直接指定の詠唱（v2.2 新機能）**
   * `/ma "バニシュガ" <敵ID>` の形で詠唱するため、ターゲット切り替えの待ち時間で別の敵に飛ぶことがありません。
-* **使用魔法・射程のカスタム変更と自動保存 (`libs/config.lua`)**
+* **使用魔法・射程の変更と自動保存**
   * `//bp spell <魔法名>` で `ディアガ` などに切り替え、`//bp range <m>` で射程を変更できます。
   * 釣り役・魔法・射程は `data/settings.xml` に保存され、再読み込み後も保持されます。
 * **リキャスト中の知らせ・対象外の敵の数（v2.3 新機能）**
@@ -39,11 +39,12 @@ v2.2.0 では、**フェイス・ペット・他PTの敵を誤って選ぶ問題
 
 ---
 
-## 📦 ファイル構成
+## ファイル構成
 
 ```text
 BanishgaPull/
 ├── BanishgaPull.lua    # アドオン本体スクリプト
+├── LICENSE             # MIT License
 ├── README.md           # 本ドキュメント
 └── data/
     └── settings.xml    # 自動生成される設定ファイル
@@ -51,11 +52,10 @@ BanishgaPull/
 
 ---
 
-## 🚀 インストール方法
+## インストール方法
 
-1. 最新の `BanishgaPull` ファイルを入手します。
-2. Windower 4 の addons フォルダー内に `BanishgaPull` フォルダーを作成し、配置します：
-   `Windower4/addons/BanishgaPull/BanishgaPull.lua`
+1. GitHub の Code → Download ZIP で、ファイル一式をダウンロードして解凍します。フォルダー名が `BanishgaPull-main` になるので、`BanishgaPull` に直します。
+2. `Windower4/addons/` に、`BanishgaPull` フォルダーごと置きます（`Windower4/addons/BanishgaPull/BanishgaPull.lua` となるように）。
 3. ゲーム内のコンソールまたはマクロで読み込みます：
    `//lua load BanishgaPull`
 
@@ -63,7 +63,7 @@ BanishgaPull/
 
 ---
 
-## 💻 コマンド一覧 (`//bp` または `//banishgapull`)
+## コマンド一覧 (`//bp` または `//banishgapull`)
 
 | コマンド | 説明 | 実行例 |
 | :--- | :--- | :--- |
@@ -71,10 +71,10 @@ BanishgaPull/
 | `//bp set <キャラ名>` | 最優先で横取り・保護する「指定釣り役」を設定（保存されます） | `//bp set Taro` |
 | `//bp set off` | 釣り役指定を解除（PT全員の被弾自動検知モードへ。`reset` / `clear` も可） | `//bp set off` |
 | `//bp spell <魔法名>` | 詠唱する魔法を変更（初期値: `バニシュガ`） | `//bp spell ディアガ` |
-| `//bp range <メートル>` | 自分からの射程を変更（0〜50m、初期値 20m。`distance` も可） | `//bp range 18` |
+| `//bp range <メートル>` | 自分からの射程を変更（0 より大きく 50m まで、初期値 20m。`distance` も可） | `//bp range 18` |
 | `//bp status` | 現在の釣り役・魔法・射程をチャット欄に表示 | `//bp status` |
 | `//bp help` | コマンド一覧をチャット欄に表示 | `//bp help` |
-| `//bp lang auto` / `ja` / `en` | 表示の言語（初期値 auto = クライアントの言語。読み込み直しで反映） | `//bp lang en` |
+| `//bp lang auto\|ja\|en` | 表示の言語（初期値 auto = クライアントの言語。読み込み直しで反映） | `//bp lang en` |
 
 ### マクロ例
 
@@ -84,7 +84,7 @@ BanishgaPull/
 
 ---
 
-## 🎯 ターゲット優先度検索ロジック (v2.2.0)
+## ターゲット優先度検索ロジック
 
 `//bp` 実行時、自分から射程（初期値20m）以内にいる敵を以下の順序で判定します。
 
@@ -103,25 +103,26 @@ BanishgaPull/
 
 ---
 
-## ⚠️ 注意事項
+## 注意事項
 
-* 外部ツールの利用は自己責任でお願いします。
+* Windower を含む外部ツールの利用は、FFXI の利用規約で禁止されています。アカウントの停止などの処分を受ける可能性があり、使用による不利益について、作者は責任を負えません。自己責任で使ってください。
+* この表にないコマンドを `//bp` の後に打つと、詠唱が実行されます（旧版の説明にあった `//bp dist` は、現在のコードにありません。射程の変更は `//bp range` です）。
 
 ---
 
-## 📜 ライセンス・クレジット
+## ライセンス・クレジット
 
 * **作者**: hikaruoshino
 * **動作環境**: Windower 4 (日本語クライアントで確認。英語クライアントは英語表示に対応していますが、未確認です)
-* **使用ライブラリ**: `config`, `chat`（どちらも Windower 標準）
+* **使用ライブラリ**: `config`, `chat`, `resources`（すべて Windower 標準）
 * **ライセンス**: MIT License
 
 ---
 
-## 📜 更新履歴（Changelog）
+## 更新履歴（Changelog）
 
 * **v2.5.0 (2026-10-22)**
-  * **英語表示に対応**: ゲームクライアントの言語に合わせて自動で切り替わる（`//bp lang auto|ja|en`、読み込み直しで反映）。魔法名は言語に合わせて自動で直る（英語クライアントでは `Banishga`）。英語クライアントでの動作と、受け付けられなかった敵の検出（英語の文 `Unable to execute that command` はゲーム内未確認）は未確認。`reject_message`（`data/settings.xml`）で検出する文を変えられる。
+  * **英語表示に対応**: ゲームクライアントの言語に合わせて自動で切り替わる（`//bp lang auto|ja|en`、読み込み直しで反映）。魔法名は言語に合わせて自動で直る（英語クライアントでは `Banishga`）。英語クライアントでの動作は未確認。受け付けられなかった敵の検出に使う英語の文 `Unable to execute that command` は、記憶によるもので、ゲーム内未確認。`reject_message`（`data/settings.xml`）で検出する文を変えられる。
 * **v2.4.0 (2026-10-18)**
   * **受け付けられなかった敵を 15 秒選ばない**: 唱えた直後に「選択されたコマンドを実行できない」が届いた敵を外し、同じ敵が選ばれ続けて唱えられなくなるのを解消。外した数は「対象外」の表示に「受け付けられなかった敵 N 体」として出ます。
 * **v2.3.0 (2026-10-16)**
@@ -136,13 +137,13 @@ BanishgaPull/
   * **日本語クライアント対応**: 初期魔法を `バニシュガ` に変更し、旧設定の `Banishga` を自動で置き換え。
   * **ドキュメント整理**: 現行コードに無い HUD 表示（`//bp hud`）と `//bp dist` の記載を削除し、実際のコマンドに合わせました。
 * **v2.1.0 (2026-10-05)**
-  * **黄色ネーム（ヘイト未発生群）対応**: 指定釣り役の周囲15m以内にいる敵（Priority 3）を新設。赤ネーム化前の引連れ群への即時タゲ補獲・バニシュガ詠唱に対応。
+  * **黄色ネーム（ヘイト未発生群）対応**: 指定釣り役の周囲15m以内にいる敵（Priority 3）を新設。赤ネーム化前の引連れ群に、すぐに詠唱できるようにした。
   * **距離ソートの最適化**: 自分基準ではなく「指定釣り役からの距離」でターゲットを最優先選別するよう判定ロジックを改良。
   * **チャット表示の機能拡張**: 追尾中（黄色ネーム）と被弾中（赤ネーム）の識別ログ表示を追加。
 * **v2.0.0 (2026-10-01)**
-  * 詠唱魔法のカスタム変更コマンド (`//bp spell`) と、最大検索範囲の変更コマンド (`//bp dist`) を追加。
+  * 詠唱魔法を変更するコマンドと、最大検索範囲を変更するコマンドの記載を追加（当時は `//bp dist` と書いていましたが、現在のコードにあるのは `//bp range` です）。
 * **v1.0.0 (2026-09-20)**
-  * 初版リリース。指定釣り役追尾および3段階ターゲット優先度検索を搭載。
+  * 初版リリース。釣り役の指定と、3段階の優先度による敵の検索。
 
 ---
 
@@ -150,7 +151,7 @@ BanishgaPull/
 
 ## English
 
-BanishgaPull is a Windower 4 addon for FINAL FANTASY XI, for fights with many mobs around (Divergence, Omen, Odyssey, mob packs). Put `/con bp` in a macro. **Each press picks one mob and casts one spell on it** (Banishga by default). It has no loop or timer, so nothing happens until you press.
+BanishgaPull is a Windower 4 addon for FINAL FANTASY XI, for fights with many mobs around (Divergence, Omen, Odyssey, mob packs). Put `/console bp` in a macro. **Each press picks one mob and casts one spell on it** (Banishga by default). It has no loop or timer, so nothing happens until you press.
 
 **Not tested on the English client yet.** The display and the spell name switch to English when the client is English (`//bp lang ja|en|auto` to force it), but I have only played it on the Japanese client. Whether it detects a refused cast on the English client is not checked either (see below).
 
@@ -160,18 +161,18 @@ Within your range (default 20 yalms), in this order:
 
 1. A mob attacking the puller you set with `//bp set <name>`
 2. A mob within 15 yalms of that puller
-3. A mob attacking another party member
+3. A mob attacking another party member (you included)
 4. Any other mob in range
 
-Orders 1 and 2 only apply if you set a puller. Among orders 1 and 2 it takes the mob closest to the puller; otherwise the one closest to you.
+Priorities 1 and 2 only apply if you set a puller; they pick the mob closest to the puller. Otherwise it picks the mob closest to you.
 
-Skipped: trusts, pets, NPCs, mobs claimed by another party (purple name), dead mobs, and mobs that are not drawn on your screen. The cast goes out with the mob's ID (`/ma "Banishga" <id>`), so it cannot jump to another mob while your target changes.
+Skipped: trusts, pets (automatons and luopans included), NPCs, mobs claimed by another party (purple name), dead mobs, and mobs that are not drawn on your screen. The cast goes out with the mob's ID (`/ma "Banishga" <id>`), so it does not depend on switching your target first.
 
 ### Other behavior
 
 - If the spell is on recast, it prints the seconds left and does not cast.
 - It prints how many mobs in range it had to skip (not drawn, claimed by another party, refused by the game).
-- If the game refuses a mob right after the cast is sent, that mob is skipped for 15 seconds so the next press goes to another one. On the Japanese client it looks for 選択されたコマンドを実行できない. On the English client it looks for "Unable to execute that command" (from memory, **not checked on an English client yet**). If it never triggers, tell me the exact message, or set it yourself in `reject_message` in `data/settings.xml`.
+- If the game refuses a mob right after the cast is sent, that mob is skipped for 15 seconds so the next press goes to another one. On the Japanese client it looks for 選択されたコマンドを実行できない ("unable to execute the selected command"). On the English client it looks for "Unable to execute that command" (from memory, **not checked on an English client yet**). If it never triggers, open a GitHub issue with the exact message, or set it yourself in `reject_message` in `data/settings.xml`.
 
 ### Install
 
@@ -185,7 +186,7 @@ Skipped: trusts, pets, NPCs, mobs claimed by another party (purple name), dead m
 | `//bp` or `//bp pull` | Pick one mob and cast the spell once |
 | `//bp set <name>` | Set the puller (saved). `//bp set off` clears it (`reset` and `clear` also work) |
 | `//bp spell <name>` | Change the spell (e.g. `//bp spell Diaga`) |
-| `//bp range <yalms>` | Change the range from you (up to 50, default 20) |
+| `//bp range <yalms>` | Change the range from you (more than 0, up to 50, default 20) |
 | `//bp status` | Show the puller, spell and range |
 | `//bp lang auto` / `ja` / `en` | Display language (reload to apply) |
 | `//bp help` | List the commands |
@@ -195,6 +196,6 @@ Macro example: `/con bp`
 ### Notes
 
 - Settings (puller, spell, range, language) are saved in `data/settings.xml`.
-- Use of external tools is at your own risk.
+- Using third-party tools such as Windower violates the FFXI Terms of Service. Your account may be penalized. Use this at your own risk; the author takes no responsibility.
 
 Released under the MIT License. Author: hikaruoshino.
