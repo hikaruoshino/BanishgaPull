@@ -1,6 +1,6 @@
 _addon.name = 'BanishgaPull'
 _addon.author = 'hikaruoshino'
-_addon.version = '2.5.1'
+_addon.version = '2.5.2'
 _addon.commands = {'bp', 'banishgapull'}
 
 require('chat')
@@ -143,6 +143,11 @@ windower.register_event('addon command', function(cmd, ...)
             windower.add_to_chat(207, sjis(L('[BanishgaPull] 現在の魔法: ' .. settings.spell .. ' (変更: //bp spell 魔法名)', '[BanishgaPull] Current spell: ' .. settings.spell .. ' (change: //bp spell <name>)')))
             return
         end
+        -- 魔法名は /ma "魔法名" にそのまま入るので、引用符と ; (コマンドの区切り) を含む名前は受け付けない
+        if name:find('[";]') then
+            windower.add_to_chat(123, sjis(L('[BanishgaPull] 魔法名に " と ; は使えません: ' .. name, '[BanishgaPull] A spell name cannot contain " or ;: ' .. name)))
+            return
+        end
         settings.spell = name
         config.save(settings)
         windower.add_to_chat(209, sjis(L('[BanishgaPull] 唱える魔法を【 ' .. name .. ' 】に変更しました。', '[BanishgaPull] Spell set to [' .. name .. '].')))
@@ -242,7 +247,7 @@ windower.register_event('addon command', function(cmd, ...)
         -- 生きていてターゲット可能な敵 (フェイス・ペット・NPC・他PTクレームは除外)
         if mob.is_npc and mob.valid_target and is_enemy(mob) and is_claim_ok(mob, party_ids) and not is_bad_target(mob.id)
             and (mob.hpp or 0) > 0 and mob.status ~= 2 and mob.status ~= 3 then
-            local dist_self_sq = mob.distance
+            local dist_self_sq = mob.distance or math.huge   -- 距離が取れない敵は射程外として扱う (上の数える側と同じ)
             -- 自分からの距離が射程以内
             if dist_self_sq <= max_dist_sq then
                 local current_priority = 1
@@ -332,6 +337,11 @@ windower.register_event('addon command', function(cmd, ...)
         end
 
         local spell = settings.spell
+        -- settings.xml を手で書いたときも、引用符と ; を含む名前は送らない (/ma のコマンドが崩れるため)
+        if spell:find('[";]') then
+            windower.add_to_chat(123, sjis(L('[BanishgaPull] 魔法名に " と ; は使えません: ' .. spell, '[BanishgaPull] A spell name cannot contain " or ;: ' .. spell)))
+            return
+        end
         windower.add_to_chat(color, sjis('[BanishgaPull] ') .. p_msg .. ' >> ' .. best_target.name .. ' (' .. string.format('%.1f', real_min_dist) .. 'm) ' .. sjis(L('へ [' .. spell .. '] 発動！', '-> [' .. spell .. ']')))
         -- ターゲットを切り替えずに、敵の ID を直接指定して唱える (切り替え待ちで別の敵に飛ぶのを防ぐ)
         windower.send_command(sjis('input /ma "' .. spell .. '" ' .. best_target.id))
