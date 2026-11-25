@@ -1,4 +1,4 @@
-# BanishgaPull (v2.5.2)
+# BanishgaPull (v2.5.3)
 
 English follows the Japanese section. → [English](#english)
 
@@ -8,7 +8,7 @@ English follows the Japanese section. → [English](#english)
 
 `BanishgaPull` は、Windower 4 用のアドオンです。ダイバージェンス、オメン、オデシー（シェオル）、各種範囲狩りや多重リンクなどの集団戦において、指定した「釣り役」の周囲に集まった敵や、PTメンバーを攻撃している敵を優先順に探し、`バニシュガ` や `ディアガ` などの魔法を 1 回詠唱します。
 
-最新の v2.5.2 では、まれな条件で止まる箇所と、魔法名の入力の確認を直しました。v2.5.1 では、表にないコマンドで詠唱が実行されないようにしました。v2.5.0 では、英語表示に対応しました。以前の版の変更は、末尾の更新履歴にあります。
+v2.5.3 では詠唱開始を敵と魔法で照合し、送信直後の二重押しを防ぎます。
 
 ---
 
@@ -121,6 +121,15 @@ BanishgaPull/
 
 ## 更新履歴（Changelog）
 
+* **v2.5.3 (2026-11-25)**
+  * **表示の変更**: 押したときの表示を「発動！」から「送信」に変えました。送っただけで、ゲームが受け付けたかはまだ分からないためです。
+  * **詠唱開始の確認**: 自分の詠唱が、選んだ敵と設定の魔法で始まったことをゲームから受け取ったら、「詠唱開始を確認」と表示します。
+  * **押し直しの重複を防ぐ**: 送ってから 1 秒たたないうちにもう一度押したときは、送らずに「送信済み」と表示します。
+  * **設定値の補正**: `data/settings.xml` の射程は 0 より大きく 50 以下に直します（数でない値・0 以下は 20、50 を超える値は 50）。魔法名が数・空・空白だけのときも読み込めます（空と空白だけは `バニシュガ`）。`reject_message` が文字列でないときは、言語ごとの既定の文を使います。
+  * **保存失敗の警告**: 設定を保存できなかったときは、その回だけ有効になることを知らせます。
+  * **英語クライアント**: `lang` に `ja` を指定しても、英語クライアントでは英語の表示に戻します（英語クライアントは日本語の文字を出せないため）。
+  * **ゾーン移動とログアウト**: 受け付けられなかった敵の一覧と、結果を待っている要求を消します。結果が 3 秒届かない要求も消します。
+  * 今回の変更は Lua 5.1 の模擬環境で確認しました。ゲーム内での動作は未確認です。
 * **v2.5.2 (2026-10-28)**
   * **距離が取れない敵がいても止まらない**: 敵の一覧に距離の値が無い敵が混ざると、詠唱する敵を探す途中でエラーになって止まる箇所があった。距離が取れない敵は射程の外として扱う（数える側は以前からそうしていた）。実際に起きることはまれと思われる。
   * **魔法名に `"` と `;` を使えない**: 魔法名は `/ma "魔法名"` にそのまま入るので、`"` や `;`（コマンドの区切り）を含む名前は `//bp spell` で受け付けず、`data/settings.xml` に書かれていても詠唱しない。
@@ -158,7 +167,7 @@ BanishgaPull/
 
 BanishgaPull is a Windower 4 addon for FINAL FANTASY XI, for fights with many mobs around (Divergence, Omen, Odyssey, mob packs). Put `/console bp` in a macro. **Each press picks one mob and casts one spell on it** (Banishga by default). It has no loop or timer, so nothing happens until you press.
 
-**Not tested on the English client yet.** The display and the spell name switch to English when the client is English (`//bp lang ja|en|auto` to force it), but I have only played it on the Japanese client. Whether it detects a refused cast on the English client is not checked either (see below).
+**Not tested on the English client yet.** Spell names follow the client language. The English client also uses English for display, but I have only played it on the Japanese client. Whether it detects a refused cast on the English client is not checked either (see below).
 
 ### How it picks a mob
 
@@ -204,6 +213,18 @@ Macro example: `/con bp`
 - Using third-party tools such as Windower violates the FFXI Terms of Service. Your account may be penalized. Use this at your own risk; the author takes no responsibility.
 
 Released under the MIT License. Author: hikaruoshino.
+
+### Changes in v2.5.3 (2026-11-25)
+
+- The message on each press now ends with "sent". Sending does not mean the game accepted it.
+- When your cast of the set spell starts on the chosen mob, it prints "Casting [spell] on <mob> started".
+- If you press again less than 1 second after a send, it does not send again and prints "Already sent".
+- Values in `data/settings.xml` are corrected on load: the range must be above 0 and at most 50 (non-numbers and 0 or less become 20, anything above 50 becomes 50). A spell name that is a number, empty or only spaces still loads (empty or spaces fall back to Banishga). A `reject_message` that is not text falls back to the default for your client language.
+- If the settings cannot be saved, it tells you the change lasts only until the addon is reloaded.
+- On the English client, `lang` set to `ja` falls back to English, because the English client cannot show Japanese text.
+- Zoning and logging out clear the list of refused mobs and the request waiting for a result. A request with no result after 3 seconds is also cleared.
+- A mob with no distance no longer stops the search. A spell name cannot contain `"` or `;`.
+- This update was tested in a Lua 5.1 simulation. In-game behavior has not been verified for this version.
 
 ## 不具合・動作報告 / Feedback
 
