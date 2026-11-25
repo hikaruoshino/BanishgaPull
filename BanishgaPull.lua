@@ -348,8 +348,8 @@ windower.register_event('addon command', function(cmd, ...)
     local puller_id = nil
     local puller_mob = nil
 
-    for k, member in pairs(party) do
-        if type(member) == 'table' and member.mob then
+    for _, member in pairs(party) do
+        if type(member) == 'table' and member.mob and member.mob.id then
             party_ids[member.mob.id] = member.name
             if designated_puller and member.name and member.name:lower() == designated_puller:lower() then
                 puller_id = member.mob.id
@@ -368,7 +368,7 @@ windower.register_event('addon command', function(cmd, ...)
     local skipped_claim = 0    -- 射程内にいるが、他 PT にクレームされている敵
     local skipped_bad = 0      -- 射程内にいるが、ゲームが受け付けなかった敵 (しばらく選ばない)
 
-    for index, mob in pairs(mob_array) do
+    for _, mob in pairs(mob_array) do
         -- 外した敵の数を数える (表示用)
         if mob.is_npc and is_enemy(mob) and (mob.hpp or 0) > 0 and mob.status ~= 2 and mob.status ~= 3
             and (mob.distance or math.huge) <= max_dist_sq then
@@ -420,10 +420,15 @@ windower.register_event('addon command', function(cmd, ...)
                     min_puller_dist_sq = dist_to_puller_sq or 999999.0
                 elseif current_priority == target_priority then
                     -- 同じ優先度同士の場合：
-                    -- 釣り役関連（優先度3, 4）の場合は「釣り役から一番近い敵」を優先
-                    if (current_priority == 3 or current_priority == 4) and dist_to_puller_sq then
-                        if dist_to_puller_sq < min_puller_dist_sq then
-                            min_puller_dist_sq = dist_to_puller_sq
+                    -- 釣り役関連（優先度3, 4）は座標が取れている敵を優先し、「釣り役から一番近い敵」を選ぶ
+                    if current_priority == 3 or current_priority == 4 then
+                        if dist_to_puller_sq then
+                            if dist_to_puller_sq < min_puller_dist_sq then
+                                min_puller_dist_sq = dist_to_puller_sq
+                                min_dist_sq = dist_self_sq
+                                best_target = mob
+                            end
+                        elseif min_puller_dist_sq >= 990000.0 and dist_self_sq < min_dist_sq then
                             min_dist_sq = dist_self_sq
                             best_target = mob
                         end
